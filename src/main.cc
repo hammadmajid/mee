@@ -45,21 +45,61 @@ int main(int argc, char *argv[]) {
     std::variant<std::vector<Token>, TokenizationError> tokenization_result =
             tokenizer.TokenizeExpression();
 
-    std::vector<Token> tokens =
+    std::vector<Token> infix_tokens =
             std::visit(TokenizationVisitor{}, tokenization_result);
 
-    Parser parser(tokens);
-    std::variant<AST, ParserError> parser_result = parser.ParseTokensIntoAST();
+    Parser parser(infix_tokens);
+    std::variant<std::vector<Token>, ParserError> parser_result = parser.ConvertToPostFixNotation();
 
     if (std::holds_alternative<ParserError>(parser_result)) {
-        ParserError err = std::get<ParserError>(parser_result);
-        std::cerr << err.err_msg << std::endl;
-        std::exit(EXIT_FAILURE);
+        const auto [type, msg] = std::get<ParserError>(parser_result);
+        switch (type) {
+            case ParserErrorType::MissingOperand:
+                std::cerr << "Error: Missing operand" << std::endl;
+                break;
+            case ParserErrorType::MismatchedParentheses:
+                std::cerr << "Error: Mismatched parentheses" << std::endl;
+                break;
+            case ParserErrorType::ExtraOperand:
+                std::cerr << "Error: Extra operand" << std::endl;
+                break;
+            case ParserErrorType::InvalidExpression:
+                std::cerr << "Error: Invalid expression" << std::endl;
+            break;
+        }
+        std::cerr << msg << std::endl;
+        return EXIT_FAILURE;
     }
 
-    AST ast = std::get<AST>(parser_result);
+    auto postfix_tokens = std::get<std::vector<Token>>(parser_result);
 
-    // Evaluate each node on AST and print the final result
+    for (auto &[token_type, value]: postfix_tokens) {
+        switch (token_type) {
+            case TokenType::KIntLit:
+            case TokenType::KFloatLit:
+                std::cout << value.value() << " ";
+                break;
+            case TokenType::KAddition:
+                std::cout << "+" << " ";
+                break;
+            case TokenType::KDivision:
+                std::cout << "/" << " ";
+                break;
+            case TokenType::KSubtraction:
+                std::cout << "-" << " ";
+                break;
+            case TokenType::KMultiplication:
+                std::cout << "*" << " ";
+                break;
+            case TokenType::KExponentiation:
+                std::cout << "!" << " ";
+                break;
+        }
+    }
+
+    std::cout << std::endl;
+
+    // TODO: Evaluate the tokens postifix notation and print the result
 
     return EXIT_SUCCESS;
 }
